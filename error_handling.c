@@ -3,17 +3,84 @@
 #include <math.h>
 #include "mpc.h"
 #include <editline/readline.h>
-float eval_op(float x, char* op, float y)
+
+typedef struct //lisp value type, handles errors
 {
-	if (strcmp(op, "add") == 0) {return x+y;}
-	if (strcmp(op, "sub") == 0) {return x-y;}
-	if (strcmp(op, "mul") == 0) {return x*y;}
-	if (strcmp(op, "div") == 0) {return x/y;}
-	if (strcmp(op, "mod") == 0) {return (int)x%(int)y;}
-	if (strcmp(op, "exp") == 0) {return powf(x,y);}
-	return 0.0;
+	int type;
+	float num;
+	int err;
+} lval;
+
+//Enums for lval types and error type
+enum{ LVAL_NUM, LVAL_ERR };
+enum{ LERR_DIV_ZERO, LERR_BAD_OP, LERR_BAD_NUM }
+
+//Constructors for lval
+lval lval_num(float x)
+{
+	lval v;
+	v.type = LVAL_NUM;
+	v.num = x;
+	return v;
 }
 
+lval lval_err(int x)
+{
+	lval v;
+	v.type = LVAL_ERR;
+	v.err = x;
+	return v;
+}
+
+//Lval print function without newline
+void lval_print(lval v) 
+{
+	switch (v.type)
+	{
+		case LVAL_NUM: printf("%f", v.num); break; //prints value if num
+
+		case LVAL_ERR:
+			if (v.err == LERR_DIV_ZERO)
+			{
+				printf("Error: Division By Zero!");
+			}
+			if (v.err == LERR_BAD_OP)
+			{
+				printf("Error: Invalid Operator");
+			}
+			if (v.err == LERR_BAD_NUM)
+			{
+				printf("Error: Invalid Number!");
+			}
+		break;
+	}
+}
+//Lval print function with a newline 
+void lval_println(lval v) { lval_print(v); putchar('\n'); }
+
+
+float eval_op(lval x, char* op, lval y) //numeric operation evaluation
+{
+	//If either value is an error, return them
+	if (x.type == LVAL_ERR) {return x;}
+	if (y.type == LVAL_ERR) {return y;}
+
+
+	if (strcmp(op, "add") == 0) {return lval_num(x.num + y.num);}
+	if (strcmp(op, "sub") == 0) {return lval_num(x.num - y.num);}
+	if (strcmp(op, "mul") == 0) {return lval_num(x.num * y.num);}
+	if (strcmp(op, "exp") == 0) {return lval_num(powf(x.num,y.num);}
+	if (strcmp(op, "div") == 0)
+	{
+		return y.num == 0 ? lval_err(LERR_DIV_ZERO) : lval_num(x.num/y.num);
+	}
+	if (strcmp(op, "mod") == 0)
+	{
+		return y.num == 0 ? lval_err(LERR_DIV_ZERO) : lval_num(x.num%y.num);
+	}
+	
+	return 0.0;
+}
 float eval(mpc_ast_t* t)
 {
 	if(strstr(t->tag, "number")) //Base case, returns numbers
