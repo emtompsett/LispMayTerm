@@ -13,7 +13,7 @@ typedef struct //lisp value type, handles errors
 
 //Enums for lval types and error type
 enum{ LVAL_NUM, LVAL_ERR };
-enum{ LERR_DIV_ZERO, LERR_BAD_OP, LERR_BAD_NUM }
+enum{ LERR_DIV_ZERO, LERR_BAD_OP, LERR_BAD_NUM };
 
 //Constructors for lval
 lval lval_num(float x)
@@ -59,7 +59,7 @@ void lval_print(lval v)
 void lval_println(lval v) { lval_print(v); putchar('\n'); }
 
 
-float eval_op(lval x, char* op, lval y) //numeric operation evaluation
+lval eval_op(lval x, char* op, lval y) //numeric operation evaluation
 {
 	//If either value is an error, return them
 	if (x.type == LVAL_ERR) {return x;}
@@ -69,28 +69,30 @@ float eval_op(lval x, char* op, lval y) //numeric operation evaluation
 	if (strcmp(op, "add") == 0) {return lval_num(x.num + y.num);}
 	if (strcmp(op, "sub") == 0) {return lval_num(x.num - y.num);}
 	if (strcmp(op, "mul") == 0) {return lval_num(x.num * y.num);}
-	if (strcmp(op, "exp") == 0) {return lval_num(powf(x.num,y.num);}
+	if (strcmp(op, "exp") == 0) {return lval_num(powf(x.num,y.num));}
 	if (strcmp(op, "div") == 0)
 	{
-		return y.num == 0 ? lval_err(LERR_DIV_ZERO) : lval_num(x.num/y.num);
+		return y.num == 0 ? lval_err(LERR_DIV_ZERO) : lval_num(x.num / y.num);
 	}
 	if (strcmp(op, "mod") == 0)
 	{
-		return y.num == 0 ? lval_err(LERR_DIV_ZERO) : lval_num(x.num%y.num);
+		return y.num == 0 ? lval_err(LERR_DIV_ZERO) : lval_num((int)x.num % (int)y.num);
 	}
-	
-	return 0.0;
 }
-float eval(mpc_ast_t* t)
+
+lval eval(mpc_ast_t* t)
 {
 	if(strstr(t->tag, "number")) //Base case, returns numbers
 	{
-		return atof(t->contents);
+		//Check if there is some error in conversion
+		errno = 0;
+		float x = atof(t->contents);
+		return errno != ERANGE ? lval_num(x) : lval_err(LERR_BAD_NUM);
 	}
 
 	char* op = t->children[1]->contents; //The operator is alwas the second child
 
-	float x = eval(t->children[2]); //storing 3rd child in x
+	lval x = eval(t->children[2]); //storing 3rd child in x
 
 	int i = 3;
 	while(strstr(t->children[i]->tag, "expr"))
@@ -123,8 +125,8 @@ int main(int argc, char** argv)
 		Number, Operator, Expr, Lispy);
 
 	puts("Lispy Version 0.0.0.4");
-	puts("Now with evaluation");
-	puts("All numbers must be in decimal form");
+	puts("Now with error handling");
+	puts("All numbers must be in decimal form\n");
 
 	while (1)
 	{
@@ -135,8 +137,8 @@ int main(int argc, char** argv)
 		if (mpc_parse("<stdin>", input, Lispy, &r))
 		{
 			//On Sucess print the AST
-			float result = eval(r.output);
-			printf("%f\n", result);
+			lval result = eval(r.output);
+			lval_println(result);
 			mpc_ast_delete(r.output);
 		}
 
