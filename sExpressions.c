@@ -218,7 +218,7 @@ int main(int argc, char** argv)
 	//Defining parsers with language
 	mpca_lang(MPCA_LANG_DEFAULT,
 		"\
-			number : /-?[0-9]+\.?[0-9]*/; \
+			number : (-?\d+\.?\d*|-?\d+) \
 			symbol : /add/ | /sub/ | /mul/ | /div/ | /mod/ | /exp/; \
 			sexpr : '(' <expr>* ')'; \
 			expr : <number> | <symbol> | <sexpr> ; \
